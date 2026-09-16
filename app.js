@@ -29,7 +29,7 @@ const icons = {
 }
 
 const table = (headers, rows) => `<div class="table-wrap"><table><thead><tr>${headers.map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(x => `<td>${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
-const image = (file, alt) => `<img src="${A}${file}" alt="${alt}" loading="lazy">`
+const image = (file, alt) => `<figure class="tutorial-shot"><a href="${A}${file}" target="_blank" rel="noopener"><img src="${A}${file}" alt="${alt}" loading="lazy"><span>Open full-size image</span></a></figure>`
 const notice = (title, text) => `<div class="notice"><strong>${title}</strong><p>${text}</p></div>`
 const code = (lang, value) => `<div class="code-block"><span class="code-label">${lang}</span><button class="copy-button" type="button" aria-label="Copy code">${icons.copy}</button><pre><code>${value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</code></pre></div>`
 const section = (id, title, body) => `<section class="doc-section" id="${id}"><h2>${title}</h2>${body}</section>`
@@ -117,7 +117,7 @@ const pages = {
 function renderHeader(page) {
   const top = [['home', 'Index', '/'], ['dashboard', 'Deploy', '/guide/dashboard/'], ['sending', 'Configure', '/system/sending/'], ['api', 'API', '/api/api-doc/']]
   document.querySelector('#site-header').className = 'site-header'
-  document.querySelector('#site-header').innerHTML = `<nav class="nav" aria-label="Main navigation"><a class="brand" href="/"><img src="/mail-mark.svg" alt=""><span>Xinu Mail</span></a><div class="search"><input id="search-input" type="search" placeholder="Search documentation" aria-label="Search documentation"><span class="search-icon">${icons.search}</span><div id="search-results" class="search-results" hidden></div></div><div class="top-links">${top.map(([id, text, href]) => `<a class="${page === id ? 'active' : ''}" href="${href}">${text}</a>`).join('')}</div><a class="github" href="${APP_REPOSITORY}" aria-label="Xinu Mail source on GitHub">${icons.github}</a><button class="menu-button" type="button" aria-label="Toggle navigation">${icons.menu}</button></nav>`
+  document.querySelector('#site-header').innerHTML = `<nav class="nav" aria-label="Main navigation"><a class="brand" href="/"><img src="/mail-mark.svg" alt=""><span>Xinu Mail</span></a><div class="search"><button class="search-toggle" type="button" aria-label="Open documentation search" aria-expanded="false">${icons.search}</button><input id="search-input" type="search" placeholder="Search documentation" aria-label="Search documentation"><div id="search-results" class="search-results" hidden></div></div><div class="top-links">${top.map(([id, text, href]) => `<a class="${page === id ? 'active' : ''}" href="${href}">${text}</a>`).join('')}</div><a class="github" href="${APP_REPOSITORY}" aria-label="Xinu Mail source on GitHub">${icons.github}</a><button class="menu-button" type="button" aria-label="Open documentation navigation" aria-expanded="false" aria-controls="sidebar">${icons.menu}</button></nav>`
 }
 
 function renderSidebar(page) {
@@ -140,14 +140,39 @@ function renderPage(page) {
 
 function setupInteractions() {
   const menu = document.querySelector('.menu-button')
-  if (menu) menu.addEventListener('click', () => {
-    document.body.classList.toggle('menu-open')
-    menu.innerHTML = document.body.classList.contains('menu-open') ? icons.close : icons.menu
-  })
+  const sidebar = document.querySelector('#sidebar')
+  const closeMenu = () => {
+    document.body.classList.remove('menu-open')
+    if (!menu) return
+    menu.innerHTML = icons.menu
+    menu.setAttribute('aria-expanded', 'false')
+    menu.setAttribute('aria-label', 'Open documentation navigation')
+  }
+  if (menu && sidebar) {
+    menu.addEventListener('click', () => {
+      const open = !document.body.classList.contains('menu-open')
+      document.body.classList.toggle('menu-open', open)
+      menu.innerHTML = open ? icons.close : icons.menu
+      menu.setAttribute('aria-expanded', String(open))
+      menu.setAttribute('aria-label', open ? 'Close documentation navigation' : 'Open documentation navigation')
+    })
+    sidebar.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu))
+  }
   const search = document.querySelector('.search')
   const input = document.querySelector('#search-input')
   const results = document.querySelector('#search-results')
-  document.querySelector('.search-icon').addEventListener('click', () => { search.classList.toggle('open'); input.focus() })
+  const searchToggle = document.querySelector('.search-toggle')
+  const closeSearch = () => {
+    search.classList.remove('open')
+    searchToggle.setAttribute('aria-expanded', 'false')
+    results.hidden = true
+  }
+  searchToggle.addEventListener('click', () => {
+    const open = !search.classList.contains('open')
+    search.classList.toggle('open', open)
+    searchToggle.setAttribute('aria-expanded', String(open))
+    if (open) input.focus()
+  })
   input.addEventListener('input', () => {
     const query = input.value.trim().toLowerCase()
     const matches = navigation.flatMap(x => x[1]).filter(([, text]) => text.toLowerCase().includes(query))
@@ -155,7 +180,12 @@ function setupInteractions() {
     results.hidden = !query
   })
   document.addEventListener('click', event => {
-    if (!search.contains(event.target)) results.hidden = true
+    if (!search.contains(event.target)) closeSearch()
+  })
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return
+    closeSearch()
+    closeMenu()
   })
   document.querySelectorAll('.copy-button').forEach(button => button.addEventListener('click', async () => {
     await navigator.clipboard.writeText(button.nextElementSibling.textContent)
