@@ -2,6 +2,8 @@
 
 Build-free static documentation for deploying and operating Xinu Mail on Cloudflare Workers.
 
+**Application source:** [github.com/x-inu/cloud-mail](https://github.com/x-inu/cloud-mail)
+
 ## Structure
 
 - `index.html` is the landing page.
